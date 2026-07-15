@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import shutil
 import tempfile
@@ -8,6 +9,8 @@ from pathlib import Path
 from scanner.full_repo import RepoScan
 
 warnings.filterwarnings("ignore", message="Libmagic magic database not found")
+
+LOG_PREFIX = "< full-repo license/copyright check >"
 
 """
 Module to run a full-repository scan.
@@ -222,6 +225,19 @@ class FullScanner:
                     f"stderr: {proc.stderr.strip()}"
                 ) from exc
 
+            # scancode produced results but exited non-zero: surface its output
+            # so the underlying warning/error is visible (it is hidden by
+            # --quiet), rather than silently trusting possibly-degraded results.
+            if proc.returncode != 0:
+                print(f"{LOG_PREFIX} WARNING: scancode exited {proc.returncode} "
+                      f"but produced results; continuing.", file=sys.stderr)
+                if proc.stdout.strip():
+                    print(f"{LOG_PREFIX} scancode stdout: {proc.stdout.strip()}",
+                          file=sys.stderr)
+                if proc.stderr.strip():
+                    print(f"{LOG_PREFIX} scancode stderr: {proc.stderr.strip()}",
+                          file=sys.stderr)
+
             for file_result in data.get('files', []):
                 if file_result.get('type') != 'file':
                     continue
@@ -229,12 +245,21 @@ class FullScanner:
                 if path not in expected:
                     continue
 
+                # Per-file scan errors mean detection was unreliable for this
+                # file -- surface them so an empty copyright/license result is
+                # not silently reported as "missing".
+                scan_errors = file_result.get('scan_errors') or []
+                if scan_errors:
+                    print(f"{LOG_PREFIX} WARNING: scancode reported scan errors "
+                          f"for {path}: {scan_errors}", file=sys.stderr)
+
                 results[path] = {
                     'license': file_result.get('detected_license_expression_spdx'),
                     'copyrights': [
                         c.get('copyright')
                         for c in (file_result.get('copyrights') or [])
                     ],
+                    'scan_errors': scan_errors,
                 }
 
         return results
