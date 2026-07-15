@@ -301,7 +301,14 @@ class FullScanner:
                     warning_license.append(f"Uncertain license, review manually: {license_expr}")
 
             error_copyright = []
-            if not result['copyrights']:
+            if result.get('scan_errors'):
+                # scancode's copyright scanner errored for this file (see the
+                # warning emitted in scan_files). An errored scan is "unknown",
+                # not "absent" -- do NOT report a missing copyright, or we would
+                # emit a false blocking finding for a file that may well have a
+                # copyright. License detection is independent and still applies.
+                pass
+            elif not result['copyrights']:
                 # Missing copyright -- no copyright statement anywhere in the file.
                 error_copyright.append("No copyright statement found")
 
