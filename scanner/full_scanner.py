@@ -195,7 +195,13 @@ class FullScanner:
                 return results
 
             output_file = os.path.join(tmpdir, 'scancode_results.json')
-            subprocess.run([
+            # Do NOT use check=True: scancode exits non-zero when it records
+            # per-file scan warnings/errors even though it still writes a valid
+            # results file. We treat the run as usable as long as parseable JSON
+            # was produced, and only fail when it was not -- surfacing scancode's
+            # captured output so the failure is diagnosable (it is otherwise
+            # hidden by --quiet).
+            proc = subprocess.run([
                 'scancode',
                 '--license',
                 '--copyright',
@@ -203,10 +209,18 @@ class FullScanner:
                 '--quiet',
                 '--json-pp', output_file,
                 tmpdir,
-            ], check=True)
+            ], capture_output=True, text=True)
 
-            with open(output_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            try:
+                with open(output_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            except (OSError, json.JSONDecodeError) as exc:
+                raise RuntimeError(
+                    f"scancode failed to produce usable results "
+                    f"(exit code {proc.returncode}).\n"
+                    f"stdout: {proc.stdout.strip()}\n"
+                    f"stderr: {proc.stderr.strip()}"
+                ) from exc
 
             for file_result in data.get('files', []):
                 if file_result.get('type') != 'file':
