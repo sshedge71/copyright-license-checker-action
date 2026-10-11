@@ -1,0 +1,31 @@
+name: 'Run full-repository license check'
+description: 'A GitHub Action to check every tracked file in a repository for license issues'
+inputs:
+  repo_name:
+    description: 'The name of the github repository'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        # Quoted so YAML cannot reinterpret the value as a number.
+        python-version: '3.12'
+
+    - name: Install dependencies
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      # Same wheel-only install as the patch-scan action in the repository root.
+      run: |
+        python -m pip install --upgrade pip
+        pip install --only-binary=lxml -r "$ACTION_PATH/../requirements.txt"
+      shell: bash
+
+    - name: Run checker
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        REPO_NAME: ${{ inputs.repo_name }}
+      run: python "$ACTION_PATH/../full_scan.py" "$REPO_NAME"
+      shell: bash
