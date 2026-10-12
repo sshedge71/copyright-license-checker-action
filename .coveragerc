@@ -1,6 +1,7 @@
 [run]
 source =
     main
+    full_scan
     scanner
 omit =
     tests/*
