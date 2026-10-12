@@ -103,6 +103,43 @@ The action will only fail the build if there are blocking errors. Warnings are i
 
 The action supports an optional `.licenseignore` file to exclude files or paths from license checks. Create a `.licenseignore` file at the repository root and list patterns (git‑style wildcards) for files that should be ignored.
 
+## Full-Repository Scan
+
+The action above checks only what a pull request changes. To check every tracked
+file in a repository, including files committed before the action was enabled,
+use the `full-scan` action. It needs no patch file, so it also suits a scheduled
+or manual run:
+
+```yml
+name: Run Full-Repository License Check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+jobs:
+  full-license-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Run full-repository license check
+        uses: qualcomm/copyright-license-checker-action/full-scan@main
+        with:
+          repo_name: ${{ github.repository }}
+```
+
+Both actions share one license baseline, one allowed-license list, one
+`.licenseignore` and one report format. The full scan checks every tracked text
+file for an incompatible or uncertain license, and additionally requires a
+license on the source files listed under
+[Source File Identification](#source-file-identification). Binary files,
+symlinks, submodules and the excluded file types in that section are skipped.
+
+The full scan applies the `opensource` rules only and checks licenses only, not
+copyrights. It has no `mode` input.
+
 ## Developing Agentic Workflows
 
 Agentic Workflows use a reviewable Markdown source file and a generated GitHub

@@ -150,6 +150,40 @@ The action allows the following copyright transition:
 
 ---
 
+## Whole-File Coverage (Full-Repository Scan)
+
+The scenarios above describe the pull-request scan, which judges the lines a
+patch adds and deletes. The `full-scan` action judges whole files as they
+stand, so it covers code committed before the action was enabled. It applies
+the same allowed-license baseline and reports in the same format:
+
+| Scenario | Severity | What triggers it |
+|---|---|---|
+| Incompatible license | Blocking | A tracked file carries a license outside the repository's allowed list |
+| Missing license | Blocking | A source file carries no license at all |
+| Uncertain license | Warning | Every license in the file's expression is an unrecognized `LicenseRef-scancode-*` |
+| License scan failed | Blocking | ScanCode could not read the file, for example on a timeout |
+
+Because a license that conflicts matters wherever it appears, the incompatible
+and uncertain checks run on every tracked text file. Only source files have to
+*carry* a license, exactly as in scenario 4 above. Binary files, symlinks,
+submodules and the excluded file types are skipped, as is anything matched by
+`.licenseignore`.
+
+**Mode note:** The full scan applies the `mode: opensource` rules only. It
+checks licenses, not copyrights, so copyright deletions (scenario 5) are
+reported by the pull-request scan alone.
+
+**How to fix a missing license:** add a header with your repository's license
+to the file, for example:
+
+```
+Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+SPDX-License-Identifier: BSD-3-Clause
+```
+
+---
+
 ## Change-Type Coverage
 
 License checks (scenarios 1-4 above) apply to `ADDED`, `MODIFIED`, and
